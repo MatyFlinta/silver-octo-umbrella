@@ -1,33 +1,48 @@
-pipeline{
+pipeline {
     agent any
-    options{
+    options {
         timestamps()
         timeout(time: 5, unit: "MINUTES")
     }
-    stages{
-        stage("make directory"){
-            options{
-                retry(2)
-            }
-            steps{
+    stages {
+        stage("Build") {
+            steps {
+                echo "Starting Build stage..."
+                sh "pwd"
+                sh "ls"
                 sh """
-                    if [! -d jenkins-test]; then 
-                    mkdir jenkins-test
+                    if [ ! -d jenkins-test ]; then
+                        mkdir jenkins-test
                     else
-                    echo 'already exists'
+                        echo 'Directory already exists'
                     fi
                 """
+                sh "touch jenkins-test/build-output.txt"
+                echo "Build stage complete."
             }
         }
-        stage("add a file"){
-            steps{
-                sh "touch jenkins-test/test.txt"
+        stage("Test") {
+            steps {
+                echo "Starting Test stage..."
+                sh "pwd"
+                sh "ls jenkins-test"
+                sh "touch jenkins-test/test-results.txt"
+                echo "Test stage complete."
+            }
+        }
+        stage("Deploy") {
+            steps {
+                echo "Starting Deploy stage..."
+                sh "pwd"
+                sh "mv jenkins-test/build-output.txt jenkins-test/deployed-artifact.txt"
+                sh "ls jenkins-test"
+                echo "Deploy stage complete."
             }
         }
     }
     post {
         always {
-            archiveArtifacts artifacts: 'jenkins-test/*.txt', allowEmptyArchive: true 
+            archiveArtifacts artifacts: 'jenkins-test/*.txt', allowEmptyArchive: true
         }
     }
 }
