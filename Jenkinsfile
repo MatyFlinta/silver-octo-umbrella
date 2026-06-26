@@ -2,47 +2,34 @@ pipeline {
     agent any
     options {
         timestamps()
-        timeout(time: 5, unit: "MINUTES")
+        timeout(time: 10, unit: "MINUTES")
     }
     stages {
-        stage("Build") {
+        stage("Clean Up") {
             steps {
-                echo "Starting Build stage..."
-                sh "pwd"
-                sh "ls"
                 sh """
-                    if [ ! -d jenkins-test ]; then
-                        mkdir jenkins-test
-                    else
-                        echo 'Directory already exists'
-                    fi
+                    docker stop flask-app nginx-proxy || true
+                    docker rm flask-app nginx-proxy || true
+                    docker network rm app-network || true
                 """
-                sh "touch jenkins-test/build-output.txt"
-                echo "Build stage complete."
             }
         }
-        stage("Test") {
+        stage("Setup") {
             steps {
-                echo "Starting Test stage..."
-                sh "pwd"
-                sh "ls jenkins-test"
-                sh "touch jenkins-test/test-results.txt"
-                echo "Test stage complete."
+                sh "docker network create app-network"
             }
         }
-        stage("Deploy") {
+        stage("Build Images") {
             steps {
-                echo "Starting Deploy stage..."
-                sh "pwd"
-                sh "mv jenkins-test/build-output.txt jenkins-test/deployed-artifact.txt"
-                sh "ls jenkins-test"
-                echo "Deploy stage complete."
+                sh "docker build -t flask-app ./Task1"
+                sh "docker build -t nginx-proxy ./Task1/nginx-proxy"
             }
         }
-    }
-    post {
-        always {
-            archiveArtifacts artifacts: 'jenkins-test/*.txt', allowEmptyArchive: true
+        stage("Run Containers") {
+            steps {
+                sh "docker run -d --name flask-app --network app-network flask-app"
+                sh "docker run -d --name nginx-proxy --network app-network -p 80:80 nginx-proxy"
+            }
         }
     }
 }
